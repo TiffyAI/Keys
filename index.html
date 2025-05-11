@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TiffyAI Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle, #001f3f, #000814);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      color: #00ccff;
+    }
+
+    input {
+      width: 90%;
+      max-width: 400px;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      background: #00ccff;
+      color: #000;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    #balance, #aiAdvice {
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    #aiAdvice {
+      background: rgba(0, 255, 255, 0.1);
+      border-left: 3px solid #00ccff;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 6px;
+    }
+
+    #cooldownSection {
+      margin-top: 50px;
+      padding: 20px;
+      border-top: 2px solid #00ccff;
+    }
+
+    #container {
+      position: relative;
+      margin-top: 30px;
+    }
+
+    .glowBtn {
+      padding: 12px 24px;
+      margin-top: 20px;
+      font-size: 24px;
+      background: linear-gradient(90deg, #00ffff, #00ccff);
+      border: none;
+      border-radius: 12px;
+      color: black;
+      font-weight: bold;
+      box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff inset;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff inset; }
+      50% { box-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff inset; }
+    }
+
+    .cooldown {
+      font-size: 40px;
+      font-weight: bold;
+      text-shadow: 0 0 20px #00ffff;
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 10px #00ffff); }
+      50% { opacity: 1; transform: scale(1.05); filter: drop-shadow(0 0 20px #00ffff); }
+    }
+
+    .imageGlow {
+      margin-top: 15px;
+      width: 100px;
+      animation: flicker 3s infinite;
+    }
+
+    .fire {
+      filter: drop-shadow(0 0 10px orange) drop-shadow(0 0 20px red);
+      animation: firePulse 1.5s infinite;
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.03); }
+    }
+
+    @keyframes firePulse {
+      0%, 100% { filter: drop-shadow(0 0 10px orange) drop-shadow(0 0 20px red); }
+      50% { filter: drop-shadow(0 0 20px red) drop-shadow(0 0 30px orange); }
+    }
+
+    .walletConnectBtn {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(45deg, #00ccff, #00ffff);
+      border-radius: 50%;
+      margin-top: 20px;
+      animation: pulse 2s infinite;
+      border: none;
+      cursor: pointer;
+    }
+
+    .walletConnectBtn.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>TiffyAI Balance Checker</h1>
+  <input id="wallet" type="text" placeholder="Enter your BNB wallet address">
+  <br>
+  <button onclick="checkBalance()">Check Balance</button>
+
+  <div id="balance">Your TIFFY Balance will appear here.</div>
+  <div id="aiAdvice">AI insights will show here after checking.</div>
+
+  <div id="cooldownSection">
+    <div id="container">
+      <div id="cooldownDisplay" class="cooldown">Awaiting Connection...</div>
+      <button id="connectBtn" class="walletConnectBtn" onclick="connectWallet()"></button>
+      <div id="actionArea"></div>
+    </div>
+  </div>
+
+  <script>
+    const CLAIM_LINK = "https://tiffyai.github.io/Claim/";
+    const WHEEL_LINK = "https://tiffyai.github.io/Lucky-Wheel/";
+    const contractAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+    let web3, provider, userAccount;
+
+    const abi = [
+      {
+        "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+        "name": "lastClaimed",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    const web3Modal = new window.Web3Modal.default({
+      cacheProvider: false,
+      providerOptions: {
+        walletconnect: {
+          package: window.WalletConnectProvider.default,
+          options: {
+            infuraId: "a8f8e2f1c1294a22b5d21f00a4ebd195"
+          }
+        }
+      }
+    });
+
+    async function connectWallet() {
+      try {
+        provider = await web3Modal.connect();
+        web3 = new Web3(provider);
+        const accounts = await web3.eth.getAccounts();
+        userAccount = accounts[0];
+        document.getElementById("connectBtn").classList.add("hidden");
+        startCooldownLogic();
+      } catch (err) {
+        console.error("Wallet connection failed", err);
+      }
+    }
+
+    async function startCooldownLogic() {
+      const contract = new web3.eth.Contract(abi, contractAddress);
+      const lastClaimed = await contract.methods.lastClaimed(userAccount).call();
+      const now = Math.floor(Date.now() / 1000);
+      const nextClaim = parseInt(lastClaimed) + 86400;
+      const remaining = nextClaim - now;
+
+      const display = document.getElementById("cooldownDisplay");
+      const actionArea = document.getElementById("actionArea");
+
+      if (remaining > 0) {
+        showCountdown(remaining);
+      } else {
+        display.innerText = "Access Key Available";
+        const btn = document.createElement("a");
+        btn.href = CLAIM_LINK;
+        btn.className = "glowBtn";
+        btn.innerText = "Claim Your Key";
+        actionArea.innerHTML = "";
+        actionArea.appendChild(btn);
+
+        const img = document.createElement("img");
+        img.src = "Keys.png";
+        img.className = "imageGlow";
+        actionArea.appendChild(img);
+      }
+    }
+
+    function showCountdown(seconds) {
+      const display = document.getElementById("cooldownDisplay");
+      const actionArea = document.getElementById("actionArea");
+
+      const interval = setInterval(() => {
+        if (seconds <= 0) {
+          clearInterval(interval);
+          display.innerText = "Next Claim Ready!";
+          const btn = document.createElement("a");
+          btn.href = WHEEL_LINK;
+          btn.className = "glowBtn";
+          btn.innerText = "Key Access To Wheel";
+          actionArea.innerHTML = "";
+          actionArea.appendChild(btn);
+
+          const img = document.createElement("img");
+          img.src = "TiffyAI-Token.png";
+          img.className = "imageGlow fire";
+          actionArea.appendChild(img);
+          return;
+        }
+
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        display.innerText = `Next Claim in: ${hrs}h ${mins}m ${secs}s`;
+        seconds--;
+      }, 1000);
+    }
+
+    // Balance Checker
+    const API_KEY = '6TGY8IXZEDF1FXZEWRR7I97E43SRBM7X3V';
+    const decimals = 18;
+
+    async function checkBalance() {
+      const address = document.getElementById("wallet").value.trim();
+      const balanceEl = document.getElementById("balance");
+      const adviceEl = document.getElementById("aiAdvice");
+
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        balanceEl.textContent = "Please enter a valid BNB address.";
+        adviceEl.textContent = "AI cannot help with an invalid address.";
+        return;
+      }
+
+      const url = `https://api-testnet.bscscan.com/api?module=account&action=tokenbalance&contractaddress=${contractAddress}&address=${address}&tag=latest&apikey=${API_KEY}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status !== "1") {
+          balanceEl.textContent = "Error fetching balance. Try again.";
+          adviceEl.textContent = "AI needs real data to give advice.";
+          return;
+        }
+
+        const raw = data.result;
+        const readable = parseFloat(raw) / Math.pow(10, decimals);
+        balanceEl.textContent = `Balance: ${readable.toFixed(6)} TIFFY`;
+
+        if (readable === 0) {
+          adviceEl.textContent = "You don't own any TiffyAI yet. Great time to get started!";
+        } else if (readable < 1) {
+          adviceEl.textContent = "You're just getting started! Build your TiffyAI stash.";
+        } else if (readable < 10) {
+          adviceEl.textContent = "Nice! You're on your way to becoming a TiffyAI knight!";
+        } else {
+          adviceEl.textContent = "Legendary holder status. Consider staking or trading wisely!";
+        }
+
+      } catch (e) {
+        balanceEl.textContent = "Could not connect to the blockchain.";
+        adviceEl.textContent = "Try again later or check your internet.";
+      }
+    }
+  </script>
+</body>
+</html>
