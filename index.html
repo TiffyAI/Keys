@@ -3,153 +3,174 @@
 <head>
   <meta charset="UTF-8" />
   <title>TiffyAI Countdown Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Web3, WalletConnect & Web3Modal -->
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
-
+  <script src="https://unpkg.com/@web3modal/standalone@2.5.2/dist/index.js"></script>
   <style>
     body {
       margin: 0;
-      padding: 0;
+      height: 100vh;
       background: linear-gradient(to bottom, #010a2a, #000000);
       color: white;
       font-family: 'Segoe UI', sans-serif;
       text-align: center;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
+      overflow: hidden;
+      padding: 40px;
     }
 
-    .cooldown {
-      font-size: 32px;
-      margin-bottom: 20px;
-      text-shadow: 0 0 15px cyan;
+    #container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
 
     .connectToken {
       width: 120px;
+      margin-top: 20px;
       cursor: pointer;
       transition: all 0.3s ease;
-      filter: drop-shadow(0 0 10px red);
-      animation: redPulse 1.5s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 10px red) drop-shadow(0 0 20px darkred);
+      animation: redPulse 2s ease-in-out infinite alternate;
     }
 
     .connectToken.connected {
-      filter: drop-shadow(0 0 10px lime) drop-shadow(0 0 20px green);
+      filter: drop-shadow(0 0 16px lime) drop-shadow(0 0 30px green);
       animation: greenPulse 1.5s ease-in-out infinite alternate;
     }
 
     @keyframes redPulse {
-      0% { transform: scale(1); filter: drop-shadow(0 0 10px red); }
-      100% { transform: scale(1.1); filter: drop-shadow(0 0 20px darkred); }
+      0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px red) drop-shadow(0 0 20px darkred);
+      }
+      100% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 20px red) drop-shadow(0 0 30px darkred);
+      }
     }
 
     @keyframes greenPulse {
-      0% { transform: scale(1); filter: drop-shadow(0 0 10px lime); }
-      100% { transform: scale(1.1); filter: drop-shadow(0 0 20px green); }
+      0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px lime) drop-shadow(0 0 20px green);
+      }
+      100% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 20px lime) drop-shadow(0 0 40px green);
+      }
     }
 
     .glowBtn {
-      padding: 10px 20px;
-      background: cyan;
-      color: black;
-      font-weight: bold;
-      font-size: 18px;
+      padding: 8px 18px;
+      margin-top: 15px;
+      font-size: 20px;
+      background: linear-gradient(90deg, #00ffff, #00ccff);
       border: none;
       border-radius: 12px;
+      color: black;
+      font-weight: bold;
+      box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff inset;
       cursor: pointer;
-      margin-top: 20px;
-      box-shadow: 0 0 20px cyan, 0 0 40px cyan inset;
-      animation: pulse 2s infinite;
       text-decoration: none;
       display: inline-block;
     }
 
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 15px cyan, 0 0 30px cyan inset; }
-      50% { box-shadow: 0 0 30px cyan, 0 0 60px cyan inset; }
+    .cooldown {
+      font-size: 40px;
+      font-weight: bold;
+      text-shadow: 0 0 20px #00ffff;
+      margin-bottom: 10px;
+    }
+
+    .wheelImage {
+      width: 160px;
+      animation: mysticGlow 2.5s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 10px #00ffff);
+      position: relative;
+      z-index: 2;
+    }
+
+    @keyframes mysticGlow {
+      0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px cyan); }
+      100% { transform: scale(1.08) rotate(1deg); filter: drop-shadow(0 0 16px #00ffff); }
     }
   </style>
 </head>
 <body>
-  <div class="cooldown" id="cooldownDisplay">Awaiting Connection...</div>
-  <img src="TiffyAI-Token.png" alt="Connect Wallet" class="connectToken" id="walletConnectBtn" />
-  <div id="actionArea"></div>
+  <div id="container">
+    <div id="cooldownDisplay" class="cooldown">Awaiting Connection...</div>
+    <img src="TiffyAI-Token.png" alt="Connect Wallet" class="connectToken" id="walletConnectBtn" />
+    <div id="actionArea"></div>
+  </div>
 
-  <script>
+  <script type="module">
+    import { Web3Modal } from "https://unpkg.com/@web3modal/standalone@2.5.2";
+
     const CLAIM_LINK = "https://tiffyai.github.io/Claim/";
     const WHEEL_LINK = "https://tiffyai.github.io/Lucky-Wheel/";
     const contractAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
-
     const ABI = [
       { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
     ];
 
-    const providerOptions = {
-      walletconnect: {
-        package: window.WalletConnectProvider.default,
-        options: {
-          infuraId: "1c8c5b4b5f184f11847c59d8a8e4a6dd"
-        }
-      }
-    };
+    const walletConnectProjectId = "a97e3e589b4c79be1d4763b88fc08989"; // You can replace this with your own from WalletConnect Cloud
 
-    const web3Modal = new window.Web3Modal.default({
-      cacheProvider: false,
-      providerOptions
+    const web3Modal = new Web3Modal({
+      projectId: walletConnectProjectId,
+      themeMode: 'dark',
+      walletConnectVersion: 2,
+      standaloneChains: ["eip155:1"]
     });
 
-    async function connectWallet() {
-      const connectBtn = document.getElementById("walletConnectBtn");
+    const connectBtn = document.getElementById("walletConnectBtn");
+    const display = document.getElementById("cooldownDisplay");
+    const actionArea = document.getElementById("actionArea");
+
+    connectBtn.addEventListener("click", async () => {
       try {
-        const provider = await web3Modal.connect();
-        window.web3 = new Web3(provider);
+        const provider = await web3Modal.openModal();
+        const web3 = new Web3(provider);
+        const accounts = await web3.eth.getAccounts();
+        const user = accounts[0];
         connectBtn.classList.add("connected");
-        startApp();
+
+        const contract = new web3.eth.Contract(ABI, contractAddress);
+        const lastClaimed = await contract.methods.lastClaimed(user).call();
+        const now = Math.floor(Date.now() / 1000);
+        const nextClaim = parseInt(lastClaimed) + 86400;
+        const remaining = nextClaim - now;
+
+        if (remaining > 0) {
+          showCountdown(remaining);
+        } else {
+          display.innerText = "Access Key Available";
+          const btn = document.createElement("a");
+          btn.href = CLAIM_LINK;
+          btn.className = "glowBtn";
+          btn.innerText = "Claim Your Key";
+
+          actionArea.innerHTML = "";
+          actionArea.appendChild(btn);
+        }
       } catch (e) {
-        console.error("Connection canceled", e);
+        console.error("Connection failed:", e);
       }
-    }
+    });
 
-    async function startApp() {
-      const web3 = new Web3(window.web3.currentProvider);
-      const accounts = await web3.eth.getAccounts();
-      const user = accounts[0];
-      const contract = new web3.eth.Contract(ABI, contractAddress);
-      const lastClaimed = await contract.methods.lastClaimed(user).call();
+    function showCountdown(seconds) {
+      const btn = document.createElement("a");
+      btn.href = WHEEL_LINK;
+      btn.className = "glowBtn";
+      btn.innerText = "Key Access To Wheel";
 
-      const now = Math.floor(Date.now() / 1000);
-      const nextClaim = parseInt(lastClaimed) + 86400;
-      const remaining = nextClaim - now;
+      const img = document.createElement("img");
+      img.src = "Wheel.png";
+      img.alt = "Lucky Wheel";
+      img.className = "wheelImage";
 
-      const display = document.getElementById("cooldownDisplay");
-      const actionArea = document.getElementById("actionArea");
-
-      if (remaining <= 0) {
-        display.innerText = "Access Key Available!";
-        const btn = document.createElement("a");
-        btn.href = CLAIM_LINK;
-        btn.className = "glowBtn";
-        btn.innerText = "Claim Your Key";
-        actionArea.innerHTML = "";
-        actionArea.appendChild(btn);
-      } else {
-        startCountdown(remaining);
-        const btn = document.createElement("a");
-        btn.href = WHEEL_LINK;
-        btn.className = "glowBtn";
-        btn.innerText = "Key Access to Wheel";
-        actionArea.innerHTML = "";
-        actionArea.appendChild(btn);
-      }
-    }
-
-    function startCountdown(seconds) {
-      const display = document.getElementById("cooldownDisplay");
+      actionArea.innerHTML = "";
+      actionArea.appendChild(btn);
+      actionArea.appendChild(img);
 
       const interval = setInterval(() => {
         if (seconds <= 0) {
@@ -157,7 +178,6 @@
           display.innerText = "Cooldown Complete!";
           return;
         }
-
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
@@ -165,11 +185,6 @@
         seconds--;
       }, 1000);
     }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("walletConnectBtn");
-      btn.addEventListener("click", connectWallet);
-    });
   </script>
 </body>
 </html>
