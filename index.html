@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>TiffyAI Countdown Portal</title>
+  <title>TiffyAI Claim Portal</title>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
   <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
@@ -10,54 +10,18 @@
     body {
       margin: 0;
       height: 100vh;
-      background: linear-gradient(to bottom, #010a2a, #000000);
-      color: white;
+      background: url('clock.png') center center no-repeat;
+      background-size: cover;
       font-family: 'Segoe UI', sans-serif;
-      text-align: center;
       overflow: hidden;
-      padding: 40px;
-    }
-
-    h1 {
-      font-size: 30px;
-      color: #00ffff;
-      text-shadow: 0 0 20px #00ffff;
-      margin-bottom: 20px;
-    }
-
-    .ring {
-      margin: 30px auto 0;
-      width: 220px;
-      height: 220px;
-      border-radius: 50%;
-      box-shadow: 0 0 35px #00ffff, 0 0 60px #00ccff inset;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      animation: pulseRing 3s ease-in-out infinite;
-    }
-
-    @keyframes pulseRing {
-      0% { box-shadow: 0 0 25px #00ffff, 0 0 40px #00ccff inset; }
-      50% { box-shadow: 0 0 50px #00ffff, 0 0 70px #00ccff inset; }
-      100% { box-shadow: 0 0 25px #00ffff, 0 0 40px #00ccff inset; }
-    }
-
-    #cooldownDisplay {
-      font-size: 22px;
-      font-weight: bold;
-      text-shadow: 0 0 25px #00ffd9;
-      animation: flicker 2s infinite alternate;
-    }
-
-    @keyframes flicker {
-      0% { opacity: 1; }
-      100% { opacity: 0.85; }
     }
 
     .glowBtn {
       padding: 16px 36px;
-      margin-top: 30px;
       font-size: 20px;
       background: linear-gradient(90deg, #00ffff, #00ccff);
       border: none;
@@ -68,10 +32,18 @@
       cursor: pointer;
       text-decoration: none;
       display: inline-block;
+      animation: pulseGlow 2s infinite;
+      position: absolute;
+      bottom: 40px;
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 10px #00ffff; }
+      50% { box-shadow: 0 0 30px #00ffff; }
+      100% { box-shadow: 0 0 10px #00ffff; }
     }
 
     #connectBtn {
-      margin-top: 40px;
       padding: 14px 30px;
       font-size: 18px;
       background: linear-gradient(to right, gold, #ffd700);
@@ -81,38 +53,14 @@
       font-weight: bold;
       box-shadow: 0 0 20px gold;
       cursor: pointer;
-    }
-
-    #statusVoice {
-      margin-top: 20px;
-      font-size: 16px;
-      color: #ccc;
-    }
-
-    #keysImg {
-      display: none;
-      width: 120px;
-      margin-top: 20px;
-      animation: glowPulse 2s ease-in-out infinite;
-    }
-
-    @keyframes glowPulse {
-      0%, 100% { opacity: 0.4; transform: scale(1); filter: drop-shadow(0 0 10px gold); }
-      50% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 20px #fff89c); }
+      position: absolute;
+      top: 40px;
     }
   </style>
 </head>
 <body>
-  <h1>Holographic Access Console</h1>
   <button id="connectBtn">Connect Wallet</button>
-
-  <div class="ring">
-    <div id="cooldownDisplay">Awaiting Connection...</div>
-  </div>
-
-  <div id="statusVoice"></div>
   <div id="actionArea"></div>
-  <img id="keysImg" src="Keys.png" alt="Access Keys" />
 
   <script>
     const contractAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
@@ -146,72 +94,27 @@
       checkCooldown();
     };
 
-    function speak(text) {
-      const msg = new SpeechSynthesisUtterance(text);
-      msg.lang = "en-US";
-      msg.pitch = 1.1;
-      msg.rate = 0.93;
-      const voices = speechSynthesis.getVoices();
-      msg.voice = voices.find(v => v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("queen")) || null;
-      speechSynthesis.speak(msg);
-    }
-
     async function checkCooldown() {
       const lastClaimed = await contract.methods.lastClaimed(user).call();
       const now = Math.floor(Date.now() / 1000);
       const nextClaim = parseInt(lastClaimed) + 86400;
       const remaining = nextClaim - now;
 
-      const statusVoice = document.getElementById("statusVoice");
-      const cooldownDisplay = document.getElementById("cooldownDisplay");
       const actionArea = document.getElementById("actionArea");
-      const keys = document.getElementById("keysImg");
+
+      const btn = document.createElement("a");
+      btn.className = "glowBtn";
 
       if (remaining > 0) {
-        showCountdown(remaining);
-        speak("Access granted. Countdown to next unlock initiated.");
-        statusVoice.innerText = "Access: Claimed. Countdown active.";
-        keys.style.display = "none";
+        btn.href = WHEEL_LINK;
+        btn.innerText = "Enter Lucky Wheel";
       } else {
-        cooldownDisplay.innerHTML = "Access Key Available";
-        statusVoice.innerText = "Access: Available";
-        speak("You may now claim your reward. Access key is available.");
-        keys.style.display = "block";
-
-        const btn = document.createElement("a");
         btn.href = CLAIM_LINK;
-        btn.className = "glowBtn";
-        btn.innerText = "Proceed to Claim";
-        actionArea.innerHTML = "";
-        actionArea.appendChild(btn);
+        btn.innerText = "Claim Your Key";
       }
-    }
 
-    function showCountdown(seconds) {
-      const display = document.getElementById("cooldownDisplay");
-      const actionArea = document.getElementById("actionArea");
-
-      const interval = setInterval(() => {
-        if (seconds <= 0) {
-          clearInterval(interval);
-          display.innerHTML = "Cooldown Complete!";
-          speak("Cooldown complete. Please proceed.");
-
-          const btn = document.createElement("a");
-          btn.href = WHEEL_LINK;
-          btn.className = "glowBtn";
-          btn.innerText = "Proceed to Lucky Wheel";
-          actionArea.innerHTML = "";
-          actionArea.appendChild(btn);
-          return;
-        }
-
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        display.innerHTML = `Next spin in: ${hrs}h ${mins}m ${secs}s`;
-        seconds--;
-      }, 1000);
+      actionArea.innerHTML = "";
+      actionArea.appendChild(btn);
     }
   </script>
 </body>
