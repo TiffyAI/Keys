@@ -1,0 +1,26 @@
+let web3Modal;
+let provider;
+
+async function connectWallet() {
+  const providerOptions = {
+    walletconnect: {
+      package: window.WalletConnectProvider.default,
+      options: {
+        infuraId: "a3b17b4b01b04a3e9e9c8b9c6bca857c" // Replace with your own Infura ID if needed
+      }
+    }
+  };
+
+  web3Modal = new window.Web3Modal.default({
+    cacheProvider: false,
+    providerOptions
+  });
+
+  try {
+    provider = await web3Modal.connect();
+    start();
+    document.querySelector('.tokenWrapper').style.display = 'none';
+  } catch (err) {
+    console.error("Connection failed:", err);
+  }
+}
