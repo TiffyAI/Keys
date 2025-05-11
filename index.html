@@ -3,251 +3,153 @@
 <head>
   <meta charset="UTF-8" />
   <title>TiffyAI Countdown Portal</title>
-
-  <!-- Web3Modal V2 and Ethers.js -->
-  <script src="https://unpkg.com/@walletconnect/modal@2.7.1/dist/index.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.8.1/dist/ethers.umd.min.js"></script>
-  <script src="https://unpkg.com/web3modal@2.6.3/dist/index.umd.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Web3, WalletConnect & Web3Modal -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
 
   <style>
     body {
       margin: 0;
-      height: 100vh;
+      padding: 0;
       background: linear-gradient(to bottom, #010a2a, #000000);
       color: white;
       font-family: 'Segoe UI', sans-serif;
       text-align: center;
-      overflow: hidden;
-      padding: 40px;
-    }
-
-    #container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .glowBtn {
-      padding: 8px 18px;
-      margin-top: 15px;
-      font-size: 20px;
-      background: linear-gradient(90deg, #00ffff, #00ccff);
-      border: none;
-      border-radius: 12px;
-      color: black;
-      font-weight: bold;
-      box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff inset;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff inset; }
-      50% { box-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff inset; }
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
     }
 
     .cooldown {
-      font-size: 40px;
-      font-weight: bold;
-      text-shadow: 0 0 20px #00ffff;
-      animation: glowPulse 2s ease-in-out infinite;
-    }
-
-    @keyframes glowPulse {
-      0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 10px #00ffff); }
-      50% { opacity: 1; transform: scale(1.05); filter: drop-shadow(0 0 20px #00ffff); }
-    }
-
-    .keyWrapper, .tokenWrapper {
-      position: relative;
-      display: inline-block;
-      margin-top: 20px;
-    }
-
-    .keyImage {
-      width: 120px;
-      animation: mysticGlow 2.5s ease-in-out infinite alternate;
-      filter: drop-shadow(0 0 8px cyan);
-      position: relative;
-      z-index: 2;
-    }
-
-    .wheelImage {
-      width: 160px;
-      animation: mysticGlow 2.5s ease-in-out infinite alternate;
-      filter: drop-shadow(0 0 10px #00ffff);
-      position: relative;
-      z-index: 2;
-    }
-
-    @keyframes mysticGlow {
-      0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px cyan); }
-      100% { transform: scale(1.08) rotate(1deg); filter: drop-shadow(0 0 16px #00ffff); }
-    }
-
-    .particle {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: cyan;
-      opacity: 0.8;
-      animation: orbit 3s linear infinite;
-      z-index: 1;
-    }
-
-    @keyframes orbit {
-      0%   { transform: rotate(0deg) translateX(70px) rotate(0deg); }
-      100% { transform: rotate(360deg) translateX(70px) rotate(-360deg); }
+      font-size: 32px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 15px cyan;
     }
 
     .connectToken {
       width: 120px;
-      margin-top: 20px;
-      animation: goldPulse 2s ease-in-out infinite alternate;
-      filter: drop-shadow(0 0 10px gold) drop-shadow(0 0 20px orange);
       cursor: pointer;
       transition: all 0.3s ease;
+      filter: drop-shadow(0 0 10px red);
+      animation: redPulse 1.5s ease-in-out infinite alternate;
     }
 
-    .connectToken.glowing {
-      filter: drop-shadow(0 0 16px lime) drop-shadow(0 0 30px green);
+    .connectToken.connected {
+      filter: drop-shadow(0 0 10px lime) drop-shadow(0 0 20px green);
       animation: greenPulse 1.5s ease-in-out infinite alternate;
     }
 
-    @keyframes goldPulse {
-      0% { transform: scale(1); filter: drop-shadow(0 0 8px gold) drop-shadow(0 0 16px orange); }
-      100% { transform: scale(1.1); filter: drop-shadow(0 0 16px gold) drop-shadow(0 0 32px orange) brightness(1.2); }
+    @keyframes redPulse {
+      0% { transform: scale(1); filter: drop-shadow(0 0 10px red); }
+      100% { transform: scale(1.1); filter: drop-shadow(0 0 20px darkred); }
     }
 
     @keyframes greenPulse {
-      0% { transform: scale(1); filter: drop-shadow(0 0 10px lime) drop-shadow(0 0 20px green); }
-      100% { transform: scale(1.1); filter: drop-shadow(0 0 20px lime) drop-shadow(0 0 40px green); }
+      0% { transform: scale(1); filter: drop-shadow(0 0 10px lime); }
+      100% { transform: scale(1.1); filter: drop-shadow(0 0 20px green); }
+    }
+
+    .glowBtn {
+      padding: 10px 20px;
+      background: cyan;
+      color: black;
+      font-weight: bold;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 20px;
+      box-shadow: 0 0 20px cyan, 0 0 40px cyan inset;
+      animation: pulse 2s infinite;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 15px cyan, 0 0 30px cyan inset; }
+      50% { box-shadow: 0 0 30px cyan, 0 0 60px cyan inset; }
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="cooldownDisplay" class="cooldown">Awaiting Connection...</div>
-    <img src="TiffyAI-Token.png" alt="Connect Wallet" class="connectToken" id="walletConnectBtn" />
-    <div id="actionArea"></div>
-  </div>
+  <div class="cooldown" id="cooldownDisplay">Awaiting Connection...</div>
+  <img src="TiffyAI-Token.png" alt="Connect Wallet" class="connectToken" id="walletConnectBtn" />
+  <div id="actionArea"></div>
 
   <script>
     const CLAIM_LINK = "https://tiffyai.github.io/Claim/";
     const WHEEL_LINK = "https://tiffyai.github.io/Lucky-Wheel/";
     const contractAddress = "0x6df97Ec32401e23dEDB2E6cAF3035155890DC237";
+
     const ABI = [
-      {
-        "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-        "name": "lastClaimed",
-        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-        "stateMutability": "view",
-        "type": "function"
-      }
+      { "inputs": [{ "internalType": "address", "name": "", "type": "address" }], "name": "lastClaimed", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
     ];
 
-    const providerConfig = {
-      projectId: "your-walletconnect-project-id", // Replace with your WalletConnect Project ID
-      chains: [1], // Ethereum Mainnet
-      themeMode: "dark",
-      metadata: {
-        name: "TiffyAI",
-        description: "TiffyAI Countdown Portal",
-        url: "https://tiffyai.github.io",
-        icons: ["https://tiffyai.github.io/icon.png"]
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          infuraId: "1c8c5b4b5f184f11847c59d8a8e4a6dd"
+        }
       }
     };
 
-    const modal = new window.Web3Modal.default({
-      walletConnectVersion: 2,
-      ...providerConfig
+    const web3Modal = new window.Web3Modal.default({
+      cacheProvider: false,
+      providerOptions
     });
 
-    let signer;
-
     async function connectWallet() {
-      const btn = document.getElementById("walletConnectBtn");
-      btn.classList.add("glowing");
-
+      const connectBtn = document.getElementById("walletConnectBtn");
       try {
-        const instance = await modal.connect();
-        const provider = new ethers.BrowserProvider(instance);
-        signer = await provider.getSigner();
-        start();
-      } catch (err) {
-        console.error("Wallet connection failed:", err);
-        btn.classList.remove("glowing");
+        const provider = await web3Modal.connect();
+        window.web3 = new Web3(provider);
+        connectBtn.classList.add("connected");
+        startApp();
+      } catch (e) {
+        console.error("Connection canceled", e);
       }
     }
 
-    document.getElementById("walletConnectBtn").addEventListener("click", connectWallet);
+    async function startApp() {
+      const web3 = new Web3(window.web3.currentProvider);
+      const accounts = await web3.eth.getAccounts();
+      const user = accounts[0];
+      const contract = new web3.eth.Contract(ABI, contractAddress);
+      const lastClaimed = await contract.methods.lastClaimed(user).call();
 
-    async function start() {
-      const user = await signer.getAddress();
-      const contract = new ethers.Contract(contractAddress, ABI, signer);
-      const lastClaimed = await contract.lastClaimed(user);
       const now = Math.floor(Date.now() / 1000);
-      const nextClaim = Number(lastClaimed) + 86400;
+      const nextClaim = parseInt(lastClaimed) + 86400;
       const remaining = nextClaim - now;
 
       const display = document.getElementById("cooldownDisplay");
       const actionArea = document.getElementById("actionArea");
 
-      if (remaining > 0) {
-        showCountdown(remaining);
-      } else {
-        display.innerText = "Access Key Available";
+      if (remaining <= 0) {
+        display.innerText = "Access Key Available!";
         const btn = document.createElement("a");
         btn.href = CLAIM_LINK;
         btn.className = "glowBtn";
         btn.innerText = "Claim Your Key";
-
-        const wrapper = document.createElement("div");
-        wrapper.className = "keyWrapper";
-
-        const img = document.createElement("img");
-        img.src = "Keys.png";
-        img.alt = "Mystical Key";
-        img.className = "keyImage";
-        wrapper.appendChild(img);
-
-        for (let i = 0; i < 5; i++) {
-          const p = document.createElement("div");
-          p.className = "particle";
-          wrapper.appendChild(p);
-        }
-
         actionArea.innerHTML = "";
         actionArea.appendChild(btn);
-        actionArea.appendChild(wrapper);
+      } else {
+        startCountdown(remaining);
+        const btn = document.createElement("a");
+        btn.href = WHEEL_LINK;
+        btn.className = "glowBtn";
+        btn.innerText = "Key Access to Wheel";
+        actionArea.innerHTML = "";
+        actionArea.appendChild(btn);
       }
     }
 
-    function showCountdown(seconds) {
+    function startCountdown(seconds) {
       const display = document.getElementById("cooldownDisplay");
-      const actionArea = document.getElementById("actionArea");
-
-      const btn = document.createElement("a");
-      btn.href = WHEEL_LINK;
-      btn.className = "glowBtn";
-      btn.innerText = "Key Access To Wheel";
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "tokenWrapper";
-
-      const wheel = document.createElement("img");
-      wheel.src = "Wheel.png";
-      wheel.alt = "Lucky Wheel";
-      wheel.className = "wheelImage";
-      wrapper.appendChild(wheel);
-
-      actionArea.innerHTML = "";
-      actionArea.appendChild(btn);
-      actionArea.appendChild(wrapper);
 
       const interval = setInterval(() => {
         if (seconds <= 0) {
@@ -263,6 +165,11 @@
         seconds--;
       }, 1000);
     }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("walletConnectBtn");
+      btn.addEventListener("click", connectWallet);
+    });
   </script>
 </body>
 </html>
