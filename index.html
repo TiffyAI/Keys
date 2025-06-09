@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TiffyAI Countdown Portal</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/web3modal@1.9.12/dist/index.js"></script>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: linear-gradient(to bottom, #010a2a, #000000);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      overflow: hidden;
+      padding: 40px;
+    }
+
+    #container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .glowBtn {
+      padding: 8px 18px;
+      margin-top: 15px;
+      font-size: 20px;
+      background: linear-gradient(90deg, #00ffff, #00ccff);
+      border: none;
+      border-radius: 12px;
+      color: black;
+      font-weight: bold;
+      box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff inset;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff inset; }
+      50% { box-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff inset; }
+    }
+
+    .cooldown {
+      font-size: 40px;
+      font-weight: bold;
+      text-shadow: 0 0 20px #00ffff;
+      animation: glowPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 10px #00ffff); }
+      50% { opacity: 1; transform: scale(1.05); filter: drop-shadow(0 0 20px #00ffff); }
+    }
+
+    .keyWrapper, .tokenWrapper {
+      position: relative;
+      display: inline-block;
+      margin-top: 20px;
+    }
+
+    .keyImage {
+      width: 120px;
+      animation: mysticGlow 2.5s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 8px cyan);
+      position: relative;
+      z-index: 2;
+    }
+
+    .wheelImage {
+      width: 160px;
+      animation: mysticGlow 2.5s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 10px #00ffff);
+      position: relative;
+      z-index: 2;
+    }
+
+    @keyframes mysticGlow {
+      0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 8px cyan); }
+      100% { transform: scale(1.08) rotate(1deg); filter: drop-shadow(0 0 16px #00ffff); }
+    }
+
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: cyan;
+      opacity: 0.8;
+      animation: orbit 3s linear infinite;
+      z-index: 1;
+    }
+
+    @keyframes orbit {
+      0%   { transform: rotate(0deg) translateX(70px) rotate(0deg); }
+      100% { transform: rotate(360deg) translateX(70px) rotate(-360deg); }
+    }
+
+    .connectToken {
+      width: 120px;
+      margin-top: 20px;
+      animation: goldPulse 2s ease-in-out infinite alternate;
+      filter: drop-shadow(0 0 10px gold) drop-shadow(0 0 20px orange);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .connectToken.glowing {
+      filter: drop-shadow(0 0 16px lime) drop-shadow(0 0 30px green);
+      animation: greenPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes goldPulse {
+      0% { transform: scale(1); filter: drop-shadow(0 0 8px gold) drop-shadow(0 0 16px orange); }
+      100% { transform: scale(1.1); filter: drop-shadow(0 0 16px gold) drop-shadow(0 0 32px orange) brightness(1.2); }
+    }
+
+    @keyframes greenPulse {
+      0% { transform: scale(1); filter: drop-shadow(0 0 10px lime) drop-shadow(0 0 20px green); }
+      100% { transform: scale(1.1); filter: drop-shadow(0 0 20px lime) drop-shadow(0 0 40px green); }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="cooldownDisplay" class="cooldown">Daily Claims...</div>
+    <img src="TiffyAI-Token.png" alt="Connect Wallet" class="connectToken" id="walletConnectBtn" />
+    <div id="actionArea"></div>
+  </div>
+
+  <script>
+    const contractAddress = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const CLAIM_LINK = "https://tiffyai.github.io/Claim/";
+    const WHEEL_LINK = "https://tiffyai.github.io/Lucky-Wheel/";
+
+    const ABI = [
+      {
+        "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+        "name": "lastClaimed",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider.default,
+        options: {
+          rpc: {
+            56: "https://bsc-dataseed.binance.org/"
+          },
+          chainId: 56
+        }
+      }
+    };
+
+    const web3Modal = new window.Web3Modal.default({
+      cacheProvider: false,
+      providerOptions
+    });
+
+    async function connectWallet() {
+      const connectBtn = document.getElementById("walletConnectBtn");
+      connectBtn.classList.add("glowing");
+
+      try {
+        const provider = await web3Modal.connect();
+        window.web3 = new Web3(provider);
+        start();
+      } catch (e) {
+        console.error("Wallet connection cancelled", e);
+        connectBtn.classList.remove("glowing");
+      }
+    }
+
+    document.getElementById("walletConnectBtn").addEventListener("click", connectWallet);
+
+    async function start() {
+      const web3 = new Web3(window.web3.currentProvider);
+      const accounts = await web3.eth.getAccounts();
+      const user = accounts[0];
+      const contract = new web3.eth.Contract(ABI, contractAddress);
+      const lastClaimed = await contract.methods.lastClaimed(user).call();
+      const now = Math.floor(Date.now() / 1000);
+      const nextClaim = parseInt(lastClaimed) + 86400;
+      const remaining = nextClaim - now;
+
+      const display = document.getElementById("cooldownDisplay");
+      const actionArea = document.getElementById("actionArea");
+
+      if (remaining > 0) {
+        showCountdown(remaining);
+      } else {
+        display.innerText = "Access Key Available";
+        const btn = document.createElement("a");
+        btn.href = CLAIM_LINK;
+        btn.className = "glowBtn";
+        btn.innerText = "Claim Your Key";
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "keyWrapper";
+
+        const img = document.createElement("img");
+        img.src = "Keys.png";
+        img.alt = "Mystical Key";
+        img.className = "keyImage";
+        wrapper.appendChild(img);
+
+        for (let i = 0; i < 5; i++) {
+          const p = document.createElement("div");
+          p.className = "particle";
+          wrapper.appendChild(p);
+        }
+
+        actionArea.innerHTML = "";
+        actionArea.appendChild(btn);
+        actionArea.appendChild(wrapper);
+      }
+    }
+
+    function showCountdown(seconds) {
+      const display = document.getElementById("cooldownDisplay");
+      const actionArea = document.getElementById("actionArea");
+
+      const btn = document.createElement("a");
+      btn.href = WHEEL_LINK;
+      btn.className = "glowBtn";
+      btn.innerText = "Key Access To Wheel";
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "tokenWrapper";
+
+      const wheel = document.createElement("img");
+      wheel.src = "Wheel.png";
+      wheel.alt = "Lucky Wheel";
+      wheel.className = "wheelImage";
+      wrapper.appendChild(wheel);
+
+      actionArea.innerHTML = "";
+      actionArea.appendChild(btn);
+      actionArea.appendChild(wrapper);
+
+      const interval = setInterval(() => {
+        if (seconds <= 0) {
+          clearInterval(interval);
+          display.innerText = "Cooldown Complete!";
+          return;
+        }
+
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        display.innerText = `Next Claim in: ${hrs}h ${mins}m ${secs}s`;
+        seconds--;
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
